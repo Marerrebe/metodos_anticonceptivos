@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="es" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Juego Interactivo: Métodos Anticonceptivos (MAC)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            800: '#115e59',
+                            900: '#134e4a',
+                            dark: '#080d1a'
+                        },
+                        accent: {
+                            blue: '#38bdf8',
+                            purple: '#a855f7',
+                            pink: '#ec4899',
+                            amber: '#f59e0b',
+                            emerald: '#10b981'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        html, body {
+            height: 100%;
+            max-height: 100vh;
+            overflow: hidden;
+            font-family: 'Outfit', sans-serif;
+            background-color: #070b19;
+            color: #f1f5f9;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Custom Scrollbar for matrix overflow if on small mobile */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b132b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0d9488;
+        }
+
+        /* Token Glow & Interactivity */
+        .token-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+        }
+        .token-card:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 0 20px rgba(45, 212, 191, 0.35);
+            border-color: #2dd4bf !important;
+        }
+        .token-card.selected {
+            border-color: #38bdf8 !important;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.6);
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.25) 0%, rgba(15, 23, 42, 0.95) 100%);
+        }
+
+        /* Grid Cell States */
+        .grid-cell {
+            transition: all 0.15s ease-in-out;
+        }
+        .grid-cell.drag-over {
+            background-color: rgba(20, 184, 166, 0.3) !important;
+            border-color: #2dd4bf !important;
+            box-shadow: inset 0 0 12px rgba(45, 212, 191, 0.5);
+        }
+
+        /* Keyframes */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+        .shake-err {
+            animation: shake 0.35s cubic-bezier(.36,.07,.19,.97) both;
+            border-color: #ef4444 !important;
+            background-color: rgba(239, 68, 68, 0.25) !important;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        .pop-success {
+            animation: popIn 0.3s ease-out forwards;
+        }
+
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 20;
+            background-color: #0d152a;
+        }
+        
+        .sticky-row-header {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background-color: #0d152a;
+        }
+
+        /* Tooltip styling */
+        [data-tooltip] {
+            position: relative;
+        }
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0f172a;
+            color: #f8fafc;
+            border: 1px solid #334155;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 50;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="h-screen max-h-screen flex flex-col bg-slate-950 text-slate-100 antialiased overflow-hidden select-none">
+
+    <header class="bg-slate-900/90 border-b border-slate-800/80 px-3 py-1.5 shrink-0 z-40 backdrop-blur-md">
+        <div class="max-w-[1600px] mx-auto flex items-center justify-between gap-2">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 font-bold text-lg shadow-inner">
+                    <i class="fa-solid fa-shapes"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm md:text-base font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-teal-300 via-cyan-300 to-sky-400 leading-none">
+                        Métodos Anticonceptivos (MAC)
+                    </h1>
+                    <p class="text-[10px] text-slate-400 font-medium">Cuadro de Doble Entrada • ESI Secundario</p>
+                </div>
+            </div>
+
+            <!-- Game Stats, Progress & Action Bar -->
+            <div class="flex items-center gap-3">
+                <!-- Progress bar counter -->
+                <div class="hidden sm:flex items-center gap-2 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-xl">
+                    <i class="fa-solid fa-circle-check text-teal-400 text-xs"></i>
+                    <span class="text-[11px] text-slate-400">Progreso:</span>
+                    <span id="score-text" class="text-xs font-bold text-teal-300">0 / 0</span>
+                </div>
+
+                <!-- Streak Counter -->
+                <div class="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-xl">
+                    <i class="fa-solid fa-bolt text-amber-400 text-xs animate-pulse"></i>
+                    <span class="text-[11px] text-slate-400 hidden xs:inline">Racha:</span>
+                    <span id="streak-text" class="text-xs font-bold text-amber-400">0</span>
+                </div>
+
+                <!-- Mini visual progress line -->
+                <div class="w-24 md:w-36 bg-slate-950 rounded-full h-2 border border-slate-800 overflow-hidden hidden md:block">
+                    <div id="progress-bar" class="bg-gradient-to-r from-teal-500 via-cyan-400 to-sky-400 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+
+                <!-- Quick Buttons -->
+                <div class="flex items-center gap-1.5">
+                    <button onclick="toggleHighlightMode()" id="btn-highlight" class="p-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Activar Modo Guía">
+                        <i class="fa-solid fa-eye text-teal-400 text-xs"></i>
+                        <span class="hidden md:inline">Guía</span>
+                    </button>
+                    <button onclick="openInfoModal()" class="p-1.5 px-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-[11px] font-bold text-white flex items-center gap-1 shadow-md transition">
+                        <i class="fa-solid fa-book-open text-xs"></i>
+                        <span class="hidden md:inline">Info MAC</span>
+                    </button>
+                    <button id="btn-sound" onclick="toggleSound()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-teal-400 transition" title="Sonido">
+                        <i id="sound-icon" class="fa-solid fa-volume-high text-xs"></i>
+                    </button>
+                    <button onclick="openConfirmResetModal()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-sky-400 transition" title="Reiniciar">
+                        <i class="fa-solid fa-rotate-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <main class="flex-1 flex flex-col p-2 gap-2 overflow-hidden max-w-[1600px] w-full mx-auto">
+
+        <!-- Banner Prompt / Quick Instructions -->
+        <div class="bg-gradient-to-r from-slate-900 via-slate-800/80 to-slate-900 border border-teal-500/20 rounded-xl px-3 py-1.5 flex items-center justify-between shrink-0 shadow-md">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-md bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0 border border-teal-500/30">
+                    <i class="fa-solid fa-lightbulb text-xs"></i>
+                </div>
+                <p class="text-[11px] md:text-xs text-slate-300 font-medium leading-tight">
+                    <strong class="text-teal-300">Consigna:</strong> Arrastra una ficha desde la bandeja inferior (o toca para seleccionar) y ubícala en la casilla correspondiente del cuadro.
+                </p>
+            </div>
+            <div id="instruction-tip" class="text-[10px] text-slate-400 italic hidden lg:block shrink-0">
+                <i class="fa-solid fa-circle-info mr-1 text-teal-400"></i>Pasa el cursor sobre los nombres para ver detalles educacionales.
+            </div>
+        </div>
+
+        <!-- Matrix Table Container (Fill available screen height smoothly) -->
+        <div class="flex-1 bg-slate-900/90 border border-slate-800/90 rounded-xl shadow-2xl overflow-hidden flex flex-col min-h-0">
+            <!-- Scrollable Matrix table wrapper -->
+            <div class="flex-1 overflow-auto relative h-full">
+                <table class="w-full h-full text-left border-collapse table-fixed min-w-[1050px]">
+                    <thead>
+                        <tr class="bg-slate-950 border-b border-slate-800 text-[11px] text-slate-300">
+                            <!-- Left Header Corner -->
+                            <th class="p-2 sticky-col sticky-row-header w-52 bg-slate-950 border-r border-slate-800 font-bold text-slate-200 shadow-md">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-teal-400 uppercase tracking-wider text-[10px]">Cualidad \ Método</span>
+                                    <i class="fa-solid fa-arrow-right text-[10px] text-slate-500"></i>
+                                </div>
+                            </th>
+                            <!-- MAC Headers appended dynamically by JS -->
+                        </tr>
+                    </thead>
+                    <tbody id="matrix-body" class="divide-y divide-slate-800/60 text-[11px]">
+                        <!-- Dynamic matrix rows populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-slate-900/95 border border-slate-800 rounded-xl p-2 shrink-0 flex flex-col gap-1.5 shadow-xl">
+            <div class="flex justify-between items-center px-1">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-teal-400 animate-ping"></span>
+                    <h3 class="text-[11px] font-bold text-slate-200 uppercase tracking-wider">
+                        Bandeja de Fichas Ilustradas (Arrastra o haz clic para seleccionar)
+                    </h3>
+                </div>
+                <div id="tray-counter" class="text-[11px] text-slate-400 font-medium">
+                    Pendientes: <span class="font-bold text-teal-400">0</span>
+                </div>
+            </div>
+
+            <!-- Horizontal Scroll / Flex Grid for Illustrated Method Tokens -->
+            <div id="token-tray" class="flex items-center justify-start lg:justify-between gap-1.5 overflow-x-auto p-1 max-h-[92px] scrollbar-thin">
+                <!-- Illustrated Tokens rendered dynamically by JS -->
+            </div>
+        </div>
+
+    </main>
+
+
+    <!-- Info & Detail Modal -->
+    <div id="info-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl relative overflow-hidden flex flex-col gap-3">
+            <button onclick="closeModal('info-modal')" class="absolute top-3 right-3 text-slate-400 hover:text-white text-base p-1">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center gap-3">
+                <div id="modal-icon-container" class="w-12 h-12 rounded-xl bg-slate-800 border border-teal-500/40 flex items-center justify-center text-teal-300 text-2xl shrink-0 p-1">
+                    <!-- SVG icon or FontAwesome inserted here -->
+                </div>
+                <div>
+                    <h3 id="modal-title" class="text-base font-bold text-white">Nombre del Método</h3>
+                    <span id="modal-category" class="text-xs text-teal-400 font-semibold">Categoría</span>
+                </div>
+            </div>
+
+            <p id="modal-desc" class="text-xs text-slate-300 leading-relaxed bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 whitespace-pre-line">
+                Descripción detallada...
+            </p>
+
+            <div class="border-t border-slate-800/80 pt-2 flex flex-col gap-1.5">
+                <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Cualidades asociadas en el cuadro:</h4>
+                <ul id="modal-features-list" class="text-xs text-slate-300 space-y-1 pl-4 list-disc max-h-32 overflow-y-auto">
+                    <!-- Features list -->
+                </ul>
+            </div>
+
+            <button onclick="closeModal('info-modal')" class="mt-1 w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition">
+                Entendido / Cerrar
+            </button>
+        </div>
+    </div>
+
+    <!-- Confirm Reset Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xs w-full p-5 shadow-2xl flex flex-col gap-3 text-center">
+            <div class="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto text-lg">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 class="text-sm font-bold text-white">¿Reiniciar la Tabla?</h3>
+                <p class="text-xs text-slate-400 mt-1">Se borrarán todas las fichas colocadas y volverás a empezar.</p>
+            </div>
+            <div class="flex gap-2 mt-1">
+                <button onclick="closeModal('confirm-modal')" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition">
+                    Cancelar
+                </button>
+                <button onclick="confirmResetAction()" class="flex-1 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-xl shadow-lg transition">
+                    Reiniciar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory Celebration Modal -->
+    <div id="victory-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-teal-500/50 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl relative overflow-hidden flex flex-col items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-teal-500/20 border-2 border-teal-400 flex items-center justify-center text-teal-300 text-3xl shadow-lg shadow-teal-500/30">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-black text-white">¡Felicitaciones!</h3>
+                <p class="text-xs text-slate-400 mt-1">Has completado exitosamente todo el cuadro interactivo de Métodos Anticonceptivos.</p>
+            </div>
+
+            <div class="w-full bg-slate-950/80 p-3 rounded-2xl border border-slate-800 flex justify-around items-center">
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] text-slate-400 uppercase">Aciertos</span>
+                    <span id="final-score" class="text-lg font-bold text-teal-400">0 / 0</span>
+                </div>
+                <div class="h-6 w-[1px] bg-slate-800"></div>
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] text-slate-400 uppercase">Máxima Racha</span>
+                    <span id="final-streak" class="text-lg font-bold text-amber-400">0</span>
+                </div>
+            </div>
+
+            <p class="text-[11px] text-slate-300 italic px-2">
+                "La información accesible e inclusiva garantiza decisiones autónomas y saludables sobre nuestra salud sexual."
+            </p>
+
+            <div class="flex gap-2 w-full mt-1">
+                <button onclick="resetGame()" class="flex-1 py-2.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-xl shadow-lg transition">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> Jugar de nuevo
+                </button>
+                <button onclick="closeModal('victory-modal')" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition">
+                    Ver Cuadro
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-feedback" class="fixed bottom-4 right-4 z-50 max-w-xs w-full bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-2xl transition-all duration-300 transform translate-y-10 opacity-0 pointer-events-none flex items-start gap-2.5">
+        <div id="toast-icon" class="p-1.5 rounded-lg text-sm shrink-0 mt-0.5">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div class="flex-1">
+            <h4 id="toast-title" class="text-xs font-bold text-white">Título</h4>
+            <p id="toast-msg" class="text-[11px] text-slate-300 mt-0.5 leading-tight">Mensaje explicativo...</p>
+        </div>
+    </div>
+
+    <script>
+
+        // Detailed custom SVG illustrations for each contraceptive method
+        const MAC_ILLUSTRATIONS = {
+            preservativo_peneano: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <defs>
+                        <linearGradient id="grad_condom" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#2dd4bf" />
+                            <stop offset="100%" stop-color="#0284c7" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M22,50 C22,25 24,14 32,14 C40,14 42,25 42,50" fill="none" stroke="url(#grad_condom)" stroke-width="4.5" stroke-linecap="round" />
+                    <path d="M29,14 C29,11 35,11 35,14" fill="none" stroke="#38bdf8" stroke-width="3" />
+                    <ellipse cx="32" cy="50" rx="13" ry="4" fill="none" stroke="url(#grad_condom)" stroke-width="4" />
+                    <circle cx="32" cy="11" r="2.5" fill="#38bdf8" />
+                </svg>`,
+
+            preservativo_vaginal: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <defs>
+                        <linearGradient id="grad_vcondom" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#f472b6" />
+                            <stop offset="100%" stop-color="#a855f7" />
+                        </linearGradient>
+                    </defs>
+                    <ellipse cx="32" cy="16" rx="15" ry="5" fill="none" stroke="url(#grad_vcondom)" stroke-width="4" />
+                    <path d="M17,16 C17,35 22,50 32,50 C42,50 47,35 47,16" fill="none" stroke="url(#grad_vcondom)" stroke-width="3" stroke-dasharray="4 2" />
+                    <ellipse cx="32" cy="48" rx="10" ry="3.5" fill="none" stroke="#ec4899" stroke-width="3.5" />
+                </svg>`,
+
+            pastillas_aoc: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <rect x="12" y="14" width="40" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="2.5" />
+                    <circle cx="22" cy="24" r="4.5" fill="#f43f5e" />
+                    <circle cx="32" cy="24" r="4.5" fill="#fbbf24" />
+                    <circle cx="42" cy="24" r="4.5" fill="#fbbf24" />
+                    <circle cx="22" cy="38" r="4.5" fill="#fbbf24" />
+                    <circle cx="32" cy="38" r="4.5" fill="#fbbf24" />
+                    <circle cx="42" cy="38" r="4.5" fill="#38bdf8" />
+                </svg>`,
+
+            pastillas_emergencia: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <rect x="16" y="16" width="32" height="32" rx="6" fill="#0f172a" stroke="#f43f5e" stroke-width="2.5" />
+                    <circle cx="32" cy="32" r="9" fill="#f43f5e" />
+                    <line x1="32" y1="23" x2="32" y2="41" stroke="#ffffff" stroke-width="2.5" />
+                    <line x1="23" y1="32" x2="41" y2="32" stroke="#ffffff" stroke-width="2.5" />
+                </svg>`,
+
+            diu_cobre: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <path d="M18,20 L46,20" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" />
+                    <path d="M32,20 L32,48" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" />
+                    <!-- Copper coils -->
+                    <path d="M29,26 L35,28 M29,32 L35,34 M29,38 L35,40" stroke="#f97316" stroke-width="2.5" />
+                    <circle cx="32" cy="50" r="2.5" fill="#38bdf8" />
+                </svg>`,
+
+            siu_hormonal: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <path d="M18,20 L46,20" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" />
+                    <path d="M32,20 L32,48" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" />
+                    <!-- Hormone reservoir -->
+                    <rect x="29" y="26" width="6" height="16" rx="3" fill="#a855f7" />
+                    <circle cx="32" cy="50" r="2.5" fill="#a855f7" />
+                </svg>`,
+
+            vasectomia: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <path d="M16,18 C26,22 26,42 16,46" fill="none" stroke="#38bdf8" stroke-width="3.5" />
+                    <path d="M48,18 C38,22 38,42 48,46" fill="none" stroke="#38bdf8" stroke-width="3.5" />
+                    <!-- Cut / Sealed markers -->
+                    <line x1="22" y1="29" x2="28" y2="35" stroke="#ef4444" stroke-width="3" />
+                    <line x1="28" y1="29" x2="22" y2="35" stroke="#ef4444" stroke-width="3" />
+                    <line x1="36" y1="29" x2="42" y2="35" stroke="#ef4444" stroke-width="3" />
+                    <line x1="42" y1="29" x2="36" y2="35" stroke="#ef4444" stroke-width="3" />
+                </svg>`,
+
+            ligadura_trompas: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <!-- Uterus contour representation -->
+                    <path d="M22,18 C28,18 28,38 32,46 C36,38 36,18 42,18" fill="none" stroke="#f472b6" stroke-width="3.5" stroke-linecap="round" />
+                    <!-- Surgical clips -->
+                    <rect x="20" y="24" width="6" height="4" rx="1" fill="#fbbf24" />
+                    <rect x="38" y="24" width="6" height="4" rx="1" fill="#fbbf24" />
+                </svg>`,
+
+            implante_subdermico: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <!-- Arm outline -->
+                    <path d="M12,48 C20,32 44,32 52,48" fill="none" stroke="#64748b" stroke-width="3" stroke-linecap="round" />
+                    <!-- Implant stick glowing -->
+                    <rect x="24" y="32" width="16" height="4" rx="2" fill="#2dd4bf" stroke="#38bdf8" stroke-width="1.5" />
+                    <circle cx="32" cy="34" r="8" fill="#2dd4bf" opacity="0.25" />
+                </svg>`,
+
+            anillo_vaginal: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <circle cx="32" cy="32" r="18" fill="none" stroke="#38bdf8" stroke-width="5" opacity="0.9" />
+                    <circle cx="32" cy="32" r="18" fill="none" stroke="#e0f2fe" stroke-width="2" opacity="0.6" stroke-dasharray="8 4" />
+                </svg>`,
+
+            parche: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <rect x="18" y="18" width="28" height="28" rx="6" fill="#fde047" opacity="0.85" stroke="#eab308" stroke-width="2.5" />
+                    <rect x="24" y="24" width="16" height="16" rx="3" fill="#fef08a" />
+                    <circle cx="32" cy="32" r="3" fill="#ca8a04" />
+                </svg>`,
+
+            inyectable: `
+                <svg viewBox="0 0 64 64" class="w-full h-full">
+                    <path d="M18,46 L38,26" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" />
+                    <rect x="32" y="20" width="14" height="8" rx="2" transform="rotate(-45 39 24)" fill="#38bdf8" />
+                    <line x1="18" y1="46" x2="12" y2="52" stroke="#cbd5e1" stroke-width="2" />
+                    <circle cx="10" cy="54" r="2" fill="#38bdf8" />
+                </svg>`
+        };
+
+
+        const MAC_METHODS = [
+            {
+                id: 'preservativo_peneano',
+                name: 'Preservativo peneano',
+                shortName: 'Preserv. peneano',
+                category: 'Barrera',
+                description: 'Funda de látex fina que se coloca sobre el pene erecto antes de la relación sexual. Es el único junto con el vaginal que previene Infecciones de Transmisión Sexual (ITS).'
+            },
+            {
+                id: 'preservativo_vaginal',
+                name: 'Preservativo vaginal',
+                shortName: 'Preserv. vaginal',
+                category: 'Barrera',
+                description: 'Funda de nitrilo/poliuretano con anillos flexibles que se introduce en la vagina antes del coito. Previene embarazo e ITS.'
+            },
+            {
+                id: 'pastillas_aoc',
+                name: 'Pastillas (AOC)',
+                shortName: 'Pastillas (AOC)',
+                category: 'Hormonal',
+                description: 'Anticonceptivos Orales Combinados. Se toma una pastilla todos los días a la misma hora para inhibir la ovulación.'
+            },
+            {
+                id: 'pastillas_emergencia',
+                name: 'Pastillas de emergencia',
+                shortName: 'Pastillas emerg.',
+                category: 'Emergencia',
+                description: 'Uso eventual tras una relación sin protección o fallo del método (ej. rotura de preservativo). Debe tomarse lo antes posible.'
+            },
+            {
+                id: 'diu_cobre',
+                name: 'DIU de Cobre',
+                shortName: 'DIU de Cobre',
+                category: 'Intrauterino',
+                description: 'Dispositivo en T colocado dentro del útero por personal médico. No contiene hormonas y dura entre 5 y 10 años.'
+            },
+            {
+                id: 'siu_hormonal',
+                name: 'SIU (DIU Hormonal)',
+                shortName: 'SIU (Hormonal)',
+                category: 'Intrauterino / Hormonal',
+                description: 'Sistema intrauterino que libera levonorgestrel progresivamente. Colocado por personal de salud, dura de 3 a 5 años.'
+            },
+            {
+                id: 'vasectomia',
+                name: 'Vasectomía',
+                shortName: 'Vasectomía',
+                category: 'Quirúrgico',
+                description: 'Intervención quirúrgica sencilla e irreversible en los conductos deferentes. Método definitivo para personas con testículos.'
+            },
+            {
+                id: 'ligadura_trompas',
+                name: 'Ligadura de trompas',
+                shortName: 'Ligadura trompas',
+                category: 'Quirúrgico',
+                description: 'Cirugía sencilla donde se ocluyen las trompas de Falopio. Método irreversible para personas con útero.'
+            },
+            {
+                id: 'implante_subdermico',
+                name: 'Implante subdérmico',
+                shortName: 'Implante subdérmico',
+                category: 'Hormonal LARC',
+                description: 'Varilla flexible pequeña colocada bajo la piel del brazo con anestesia local por profesional. Dura 3 años.'
+            },
+            {
+                id: 'anillo_vaginal',
+                name: 'Anillo vaginal',
+                shortName: 'Anillo vaginal',
+                category: 'Hormonal',
+                description: 'Anillo flexible transparente que se coloca dentro de la vagina durante 3 semanas consecutivas. Libera estrógeno y progestágeno.'
+            },
+            {
+                id: 'parche',
+                name: 'Parche anticonceptivo',
+                shortName: 'Parche',
+                category: 'Hormonal',
+                description: 'Adhesivo pequeño que se pega en la piel. Se cambia una vez por semana durante 3 semanas.'
+            },
+            {
+                id: 'inyectable',
+                name: 'Inyectable',
+                shortName: 'Inyectable',
+                category: 'Hormonal',
+                description: 'Inyección intramuscular aplicada por un profesional o enfermería una vez al mes o cada 3 meses.'
+            }
+        ];
+
+        const QUALITIES = [
+            {
+                id: 'protegen_its',
+                title: 'Protegen contra las ITS',
+                desc: 'Evitan infecciones de transmisión sexual',
+                validMethods: ['preservativo_peneano', 'preservativo_vaginal'],
+                explanation: 'Únicamente los preservativos (peneano y vaginal) forman una barrera física contra las ITS.'
+            },
+            {
+                id: 'duran_anos',
+                title: 'Duran años',
+                desc: 'Métodos LARC o intervenciones permanentes',
+                validMethods: ['diu_cobre', 'siu_hormonal', 'vasectomia', 'ligadura_trompas', 'implante_subdermico'],
+                explanation: 'DIU, SIU, Implante y Cirugías son métodos de larga duración (3 a 10 años o definitivos).'
+            },
+            {
+                id: 'los_coloca_personal_salud',
+                title: 'Los coloca personal de salud',
+                desc: 'Requiere inserción o cirugía médica',
+                validMethods: ['diu_cobre', 'siu_hormonal', 'vasectomia', 'ligadura_trompas', 'implante_subdermico', 'inyectable'],
+                explanation: 'Implantes, DIU/SIU, Cirugías e Inyectables requieren ser administrados o colocados por profesionales.'
+            },
+            {
+                id: 'son_de_emergencia',
+                title: 'Son de emergencia',
+                desc: 'Uso excepcional post-coital (hasta 120hs)',
+                validMethods: ['pastillas_emergencia'],
+                explanation: 'Las pastillas de emergencia (AHE) son el único método de emergencia post-coital.'
+            },
+            {
+                id: 'son_de_barrera',
+                title: 'Son de barrera',
+                desc: 'Impiden físicamente el paso de espermatozoides',
+                validMethods: ['preservativo_peneano', 'preservativo_vaginal'],
+                explanation: 'Los preservativos actúan interponiendo una barrera infranqueable.'
+            },
+            {
+                id: 'son_gratuitos',
+                title: 'Son gratuitos (sistema público)',
+                desc: 'Garantizados sin costo por salud pública',
+                validMethods: [
+                    'preservativo_peneano', 'preservativo_vaginal', 'pastillas_aoc', 'pastillas_emergencia',
+                    'diu_cobre', 'siu_hormonal', 'vasectomia', 'ligadura_trompas', 'implante_subdermico',
+                    'anillo_vaginal', 'parche', 'inyectable'
+                ],
+                explanation: '¡Todos los métodos anticonceptivos están garantizados gratuitamente por el sistema de salud pública!'
+            },
+            {
+                id: 'son_de_alta_efectividad',
+                title: 'Son de alta efectividad',
+                desc: 'Eficacia anticonceptiva superior al 90%',
+                validMethods: [
+                    'preservativo_peneano', 'preservativo_vaginal', 'pastillas_aoc', 'pastillas_emergencia',
+                    'diu_cobre', 'siu_hormonal', 'vasectomia', 'ligadura_trompas', 'implante_subdermico',
+                    'anillo_vaginal', 'parche', 'inyectable'
+                ],
+                explanation: 'Todos los métodos anticonceptivos modernos adecuadamente usados brindan alta eficacia.'
+            },
+            {
+                id: 'son_hormonales',
+                title: 'Son hormonales',
+                desc: 'Inhiben la ovulación o alteran el moco cervical',
+                validMethods: ['pastillas_aoc', 'pastillas_emergencia', 'siu_hormonal', 'implante_subdermico', 'anillo_vaginal', 'parche', 'inyectable'],
+                explanation: 'Contienen hormonas sintéticas que impiden la ovulación y/o espesan el moco cervical.'
+            },
+            {
+                id: 'son_irreversibles',
+                title: 'Son irreversibles',
+                desc: 'Métodos quirúrgicos permanentes',
+                validMethods: ['vasectomia', 'ligadura_trompas'],
+                explanation: 'La Vasectomía y la Ligadura de Trompas son quirúrgicos y se consideran definitivos.'
+            }
+        ];
+
+
+        let audioCtx = null;
+        let isSoundMuted = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (isSoundMuted) return;
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'drop_ok') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.15);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'drop_err') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.2);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'win') {
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.type = 'sine';
+                        o.frequency.setValueAtTime(freq, now + idx * 0.1);
+                        g.gain.setValueAtTime(0.2, now + idx * 0.1);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.3);
+                        o.start(now + idx * 0.1);
+                        o.stop(now + idx * 0.1 + 0.3);
+                    });
+                } else if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    gain.gain.setValueAtTime(0.06, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+                    osc.start(now);
+                    osc.stop(now + 0.04);
+                }
+            } catch (e) {
+                console.log('Audio error:', e);
+            }
+        }
+
+        function toggleSound() {
+            isSoundMuted = !isSoundMuted;
+            const icon = document.getElementById('sound-icon');
+            if (isSoundMuted) {
+                icon.className = 'fa-solid fa-volume-xmark text-xs text-slate-600';
+            } else {
+                icon.className = 'fa-solid fa-volume-high text-xs text-teal-400';
+                playSound('click');
+            }
+        }
+
+
+        let totalRequiredCells = 0;
+        let filledCorrectCount = 0;
+        let currentStreak = 0;
+        let maxStreak = 0;
+        let selectedTokenId = null;
+        let highlightMode = false;
+        let gridState = {};
+        let draggedMacId = null;
+
+        function initGame() {
+            calculateTotalRequired();
+            renderTableHeaders();
+            renderTableRows();
+            renderTrayTokens();
+            updateScoreUI();
+        }
+
+        function calculateTotalRequired() {
+            totalRequiredCells = 0;
+            QUALITIES.forEach(q => {
+                totalRequiredCells += q.validMethods.length;
+            });
+        }
+
+        function renderTableHeaders() {
+            const rowHeader = document.querySelector('thead tr');
+            while (rowHeader.children.length > 1) {
+                rowHeader.removeChild(rowHeader.lastChild);
+            }
+
+            MAC_METHODS.forEach(mac => {
+                const th = document.createElement('th');
+                th.className = 'p-1 text-center sticky-row-header bg-slate-950 border-r border-slate-800 align-middle cursor-pointer group hover:bg-slate-900/80 transition';
+                th.onclick = () => showMethodInfo(mac.id);
+                th.dataset.tooltip = mac.name;
+
+                th.innerHTML = `
+                    <div class="flex flex-col items-center justify-center gap-0.5 p-0.5">
+                        <div class="w-6 h-6 shrink-0 group-hover:scale-110 transition duration-200">
+                            ${MAC_ILLUSTRATIONS[mac.id]}
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-300 group-hover:text-teal-300 truncate max-w-[70px] leading-none">
+                            ${mac.shortName}
+                        </span>
+                    </div>
+                `;
+                rowHeader.appendChild(th);
+            });
+        }
+
+        function renderTableRows() {
+            const tbody = document.getElementById('matrix-body');
+            tbody.innerHTML = '';
+
+            QUALITIES.forEach((quality, qIdx) => {
+                const tr = document.createElement('tr');
+                tr.className = qIdx % 2 === 0 ? 'bg-slate-900/30 hover:bg-slate-800/20' : 'bg-slate-950/30 hover:bg-slate-800/20';
+
+                // Sticky Row Header Cell (Quality title)
+                const th = document.createElement('td');
+                th.className = 'p-1.5 sticky-col bg-slate-900/95 border-r border-b border-slate-800 font-semibold text-slate-200 align-middle shadow-sm cursor-pointer group';
+                th.onclick = () => showQualityInfo(quality.id);
+
+                th.innerHTML = `
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[11px] font-bold text-slate-200 group-hover:text-teal-300 transition flex items-center justify-between leading-tight">
+                            ${quality.title}
+                            <i class="fa-solid fa-circle-info text-[9px] text-slate-500 group-hover:text-teal-400"></i>
+                        </span>
+                        <span class="text-[9px] text-slate-400 font-normal leading-none truncate max-w-[190px]">${quality.desc}</span>
+                    </div>
+                `;
+                tr.appendChild(th);
+
+                // Grid Cells for MAC columns
+                MAC_METHODS.forEach(mac => {
+                    const td = document.createElement('td');
+                    const cellKey = `${quality.id}_${mac.id}`;
+                    const isRequired = quality.validMethods.includes(mac.id);
+
+                    td.id = `cell_${cellKey}`;
+                    td.dataset.quality = quality.id;
+                    td.dataset.mac = mac.id;
+                    td.className = `p-0.5 border-r border-b border-slate-800/60 text-center grid-cell relative h-10 align-middle ${isRequired ? 'bg-slate-900/10' : 'bg-slate-950/60'}`;
+
+                    // Drag & Drop event listeners
+                    td.addEventListener('dragover', handleDragOver);
+                    td.addEventListener('dragleave', handleDragLeave);
+                    td.addEventListener('drop', handleDrop);
+                    td.addEventListener('click', () => handleCellClick(quality.id, mac.id));
+
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+        }
+
+
+        function renderTrayTokens() {
+            const tray = document.getElementById('token-tray');
+            tray.innerHTML = '';
+
+            MAC_METHODS.forEach(mac => {
+                const token = document.createElement('div');
+                token.id = `token_${mac.id}`;
+                token.dataset.mac = mac.id;
+                token.dataset.tooltip = mac.name;
+                token.title = mac.name;
+                token.draggable = true;
+                token.className = `token-card shrink-0 flex items-center justify-center p-2 rounded-xl cursor-grab active:cursor-grabbing shadow-lg transition-all select-none border border-teal-500/30 text-slate-200`;
+
+                token.innerHTML = `
+                    <div class="w-8 h-8 shrink-0">
+                        ${MAC_ILLUSTRATIONS[mac.id]}
+                    </div>
+                `;
+
+                // Drag Events
+                token.addEventListener('dragstart', handleDragStart);
+                token.addEventListener('dragend', handleDragEnd);
+
+                // Tap/Click Selection
+                token.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectTokenForTap(mac.id);
+                });
+
+                tray.appendChild(token);
+            });
+
+            updateTrayCounter();
+        }
+
+        function handleDragStart(e) {
+            initAudio();
+            draggedMacId = this.dataset.mac;
+            e.dataTransfer.setData('text/plain', draggedMacId);
+            this.classList.add('opacity-40', 'scale-95');
+            playSound('click');
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('opacity-40', 'scale-95');
+            draggedMacId = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            this.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            const macId = e.dataTransfer.getData('text/plain') || draggedMacId;
+            const qualityId = this.dataset.quality;
+
+            if (macId && qualityId) {
+                processCellPlacement(qualityId, macId, this);
+            }
+        }
+
+        function selectTokenForTap(macId) {
+            playSound('click');
+            if (selectedTokenId === macId) {
+                selectedTokenId = null;
+                clearTokenTrayHighlights();
+                showToast('Selección Cancelada', 'Toca de nuevo una ficha para elegir.', 'info');
+            } else {
+                selectedTokenId = macId;
+                highlightSelectedToken(macId);
+                const mac = MAC_METHODS.find(m => m.id === macId);
+                showToast('Ficha Seleccionada', `Toca la casilla correspondiente para colocar '${mac.shortName}'.`, 'success');
+            }
+        }
+
+        function highlightSelectedToken(macId) {
+            clearTokenTrayHighlights();
+            const tokenEl = document.getElementById(`token_${macId}`);
+            if (tokenEl) {
+                tokenEl.classList.add('selected');
+            }
+        }
+
+        function clearTokenTrayHighlights() {
+            document.querySelectorAll('.token-card').forEach(el => {
+                el.classList.remove('selected');
+            });
+        }
+
+        function handleCellClick(qualityId, macId) {
+            if (selectedTokenId) {
+                const cellTd = document.getElementById(`cell_${qualityId}_${macId}`);
+                processCellPlacement(qualityId, selectedTokenId, cellTd);
+            } else {
+                const cellKey = `${qualityId}_${macId}`;
+                if (gridState[cellKey]) {
+                    const mac = MAC_METHODS.find(m => m.id === macId);
+                    const qual = QUALITIES.find(q => q.id === qualityId);
+                    showToast('Casilla Correcta', `¡Acierto! ${mac.name} cumple con: ${qual.title}.`, 'success');
+                } else {
+                    showToast('Casilla Vacía', 'Selecciona o arrastra una ficha desde la bandeja inferior.', 'info');
+                }
+            }
+        }
+
+
+        function processCellPlacement(qualityId, macId, cellTd) {
+            const quality = QUALITIES.find(q => q.id === qualityId);
+            const mac = MAC_METHODS.find(m => m.id === macId);
+            const cellKey = `${qualityId}_${macId}`;
+
+            // Check if dropped in the correct column
+            if (cellTd.dataset.mac !== macId) {
+                playSound('drop_err');
+                triggerShake(cellTd);
+                showToast('Columna Incorrecta', `Ubicaste '${mac.shortName}' en la columna de '${MAC_METHODS.find(m => m.id === cellTd.dataset.mac).shortName}'.`, 'error');
+                resetStreak();
+                return;
+            }
+
+            const isCorrect = quality.validMethods.includes(macId);
+
+            if (isCorrect) {
+                if (!gridState[cellKey]) {
+                    gridState[cellKey] = true;
+                    filledCorrectCount++;
+                    currentStreak++;
+                    if (currentStreak > maxStreak) maxStreak = currentStreak;
+
+                    playSound('drop_ok');
+                    renderPlacedCell(cellTd, mac);
+                    updateScoreUI();
+
+                    showToast('¡Correcto!', quality.explanation, 'success');
+
+                    if (selectedTokenId === macId) {
+                        selectedTokenId = null;
+                        clearTokenTrayHighlights();
+                    }
+
+                    if (filledCorrectCount >= totalRequiredCells) {
+                        setTimeout(() => handleVictory(), 400);
+                    }
+                } else {
+                    showToast('Ya completado', 'Esta casilla ya fue marcada correctamente.', 'info');
+                }
+            } else {
+                playSound('drop_err');
+                triggerShake(cellTd);
+                resetStreak();
+                showToast('Incorrecto', `${mac.name} NO cumple con '${quality.title}'.`, 'error');
+            }
+        }
+
+        function renderPlacedCell(cellTd, mac) {
+            cellTd.innerHTML = `
+                <div class="pop-success w-full h-full flex items-center justify-center gap-1 bg-teal-500/20 border border-teal-400/60 rounded-md shadow-inner text-teal-300">
+                    <div class="w-5 h-5 shrink-0">
+                        ${MAC_ILLUSTRATIONS[mac.id]}
+                    </div>
+                    <i class="fa-solid fa-check text-[10px] text-teal-400"></i>
+                </div>
+            `;
+            cellTd.classList.add('bg-teal-950/40');
+        }
+
+        function triggerShake(cellTd) {
+            cellTd.classList.add('shake-err');
+            setTimeout(() => {
+                cellTd.classList.remove('shake-err');
+            }, 400);
+        }
+
+        function resetStreak() {
+            currentStreak = 0;
+            updateScoreUI();
+        }
+
+        function updateScoreUI() {
+            document.getElementById('score-text').textContent = `${filledCorrectCount} / ${totalRequiredCells}`;
+            document.getElementById('streak-text').textContent = currentStreak;
+
+            const pct = Math.round((filledCorrectCount / totalRequiredCells) * 100) || 0;
+            document.getElementById('progress-bar').style.width = `${pct}%`;
+
+            updateTrayCounter();
+        }
+
+        function updateTrayCounter() {
+            const remaining = totalRequiredCells - filledCorrectCount;
+            document.getElementById('tray-counter').innerHTML = `
+                Pendientes: <span class="font-bold text-teal-400">${remaining}</span>
+            `;
+        }
+
+        function showToast(title, msg, type = 'info') {
+            const toast = document.getElementById('toast-feedback');
+            const icon = document.getElementById('toast-icon');
+            const toastTitle = document.getElementById('toast-title');
+            const toastMsg = document.getElementById('toast-msg');
+
+            toastTitle.textContent = title;
+            toastMsg.textContent = msg;
+
+            if (type === 'success') {
+                icon.className = 'p-1.5 rounded-lg text-sm shrink-0 mt-0.5 bg-teal-500/20 text-teal-400 border border-teal-500/40';
+                icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+                toast.className = toast.className.replace(/border-\S+/, 'border-teal-500/50');
+            } else if (type === 'error') {
+                icon.className = 'p-1.5 rounded-lg text-sm shrink-0 mt-0.5 bg-red-500/20 text-red-400 border border-red-500/40';
+                icon.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+                toast.className = toast.className.replace(/border-\S+/, 'border-red-500/50');
+            } else {
+                icon.className = 'p-1.5 rounded-lg text-sm shrink-0 mt-0.5 bg-sky-500/20 text-sky-400 border border-sky-500/40';
+                icon.innerHTML = '<i class="fa-solid fa-circle-info"></i>';
+                toast.className = toast.className.replace(/border-\S+/, 'border-sky-500/50');
+            }
+
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-10');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            if (window.toastTimer) clearTimeout(window.toastTimer);
+            window.toastTimer = setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-10');
+            }, 3000);
+        }
+
+
+        function showMethodInfo(macId) {
+            playSound('click');
+            const mac = MAC_METHODS.find(m => m.id === macId);
+            if (!mac) return;
+
+            document.getElementById('modal-title').textContent = mac.name;
+            document.getElementById('modal-category').textContent = `Categoría: ${mac.category}`;
+            document.getElementById('modal-icon-container').innerHTML = MAC_ILLUSTRATIONS[mac.id];
+            document.getElementById('modal-desc').textContent = mac.description;
+
+            const features = QUALITIES.filter(q => q.validMethods.includes(macId));
+            const listEl = document.getElementById('modal-features-list');
+            listEl.innerHTML = features.map(f => `<li class="text-teal-300 font-semibold">${f.title}</li>`).join('');
+
+            document.getElementById('info-modal').classList.remove('hidden');
+        }
+
+        function showQualityInfo(qualityId) {
+            playSound('click');
+            const q = QUALITIES.find(item => item.id === qualityId);
+            if (!q) return;
+
+            document.getElementById('modal-title').textContent = q.title;
+            document.getElementById('modal-category').textContent = 'Cualidad del Cuadro Comparativo';
+            document.getElementById('modal-icon-container').innerHTML = '<i class="fa-solid fa-list-check text-2xl text-teal-400"></i>';
+            document.getElementById('modal-desc').textContent = `${q.desc}\n\nExplicación: ${q.explanation}`;
+
+            const validMacs = MAC_METHODS.filter(m => q.validMethods.includes(m.id));
+            const listEl = document.getElementById('modal-features-list');
+            listEl.innerHTML = validMacs.map(m => `<li class="text-teal-300 font-semibold">${m.name}</li>`).join('');
+
+            document.getElementById('info-modal').classList.remove('hidden');
+        }
+
+        function openInfoModal() {
+            playSound('click');
+            document.getElementById('modal-title').textContent = 'Guía Rápida: Métodos Anticonceptivos (MAC)';
+            document.getElementById('modal-category').textContent = 'Educación Sexual Integral (ESI)';
+            document.getElementById('modal-icon-container').innerHTML = '<i class="fa-solid fa-book-bookmark text-2xl text-teal-400"></i>';
+            document.getElementById('modal-desc').textContent = 'Los métodos anticonceptivos permiten planificar y prevenir embarazos no intencionales. Los preservativos (peneano y vaginal) son los únicos que además previenen Infecciones de Transmisión Sexual (ITS). Todos los métodos mencionados son gratuitos en el sistema público de salud.';
+
+            const listEl = document.getElementById('modal-features-list');
+            listEl.innerHTML = MAC_METHODS.map(m => `<li><strong class="text-teal-300">${m.name}:</strong> ${m.category}</li>`).join('');
+
+            document.getElementById('info-modal').classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            playSound('click');
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function toggleHighlightMode() {
+            playSound('click');
+            highlightMode = !highlightMode;
+            const btn = document.getElementById('btn-highlight');
+
+            if (highlightMode) {
+                btn.classList.add('bg-teal-600', 'text-white');
+                QUALITIES.forEach(q => {
+                    q.validMethods.forEach(mId => {
+                        const cell = document.getElementById(`cell_${q.id}_${mId}`);
+                        if (cell && !gridState[`${q.id}_${mId}`]) {
+                            cell.classList.add('border-teal-400', 'bg-teal-900/40');
+                        }
+                    });
+                });
+                showToast('Modo Guía Activado', 'Las casillas correspondientes muestran un tenue borde brillante.', 'info');
+            } else {
+                btn.classList.remove('bg-teal-600', 'text-white');
+                renderTableRows();
+                Object.keys(gridState).forEach(key => {
+                    if (gridState[key]) {
+                        const [qId, mId] = key.split('_');
+                        const cell = document.getElementById(`cell_${key}`);
+                        const mac = MAC_METHODS.find(m => m.id === mId);
+                        if (cell && mac) renderPlacedCell(cell, mac);
+                    }
+                });
+                showToast('Modo Guía Desactivado', 'Vista normal restaurada.', 'info');
+            }
+        }
+
+        function handleVictory() {
+            playSound('win');
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            }
+            document.getElementById('final-score').textContent = `${filledCorrectCount} / ${totalRequiredCells}`;
+            document.getElementById('final-streak').textContent = maxStreak;
+            document.getElementById('victory-modal').classList.remove('hidden');
+        }
+
+        function openConfirmResetModal() {
+            playSound('click');
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function confirmResetAction() {
+            closeModal('confirm-modal');
+            resetGame();
+        }
+
+        function resetGame() {
+            playSound('click');
+            gridState = {};
+            filledCorrectCount = 0;
+            currentStreak = 0;
+            maxStreak = 0;
+            selectedTokenId = null;
+            highlightMode = false;
+
+            closeModal('victory-modal');
+            closeModal('info-modal');
+
+            renderTableRows();
+            renderTrayTokens();
+            updateScoreUI();
+
+            showToast('Juego Reiniciado', 'Ubica las fichas en la tabla completa.', 'info');
+        }
+
+        window.onload = function () {
+            initGame();
+        };
+    </script>
+</body>
+</html>
